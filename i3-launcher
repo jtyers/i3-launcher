@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+
+# usage: i3-save <workspace name>
+
+from dynmen.rofi import Rofi
+import i3ipc
+import shlex
+import os
+import sys
+import subprocess
+import i3launchconfig
+
+connection = i3ipc.Connection()
+
+save_tree = {}
+
+try:
+    save_tree = i3launchconfig.load_config()
+
+except FileNotFoundError:
+    pass # ignore and use empty dict
+
+def expand(path):
+    if path is None: return None
+
+    if type(path) is list:
+        return [
+            os.path.expanduser(os.path.expandvars(x))
+            for x in path
+        ]
+
+    elif type(path) is str:
+        return ' '.join(expand(path.split(' ')))
+
+    else:
+        return os.path.expanduser(os.path.expandvars(path))
+
+
+class Submenu(object):
+    def __init__(self, menu):
+        self.menu = menu
+
+    def execute(self):
+        menu = Rofi(lines=10, hide_scrollbar=True, prompt='Command', sort=True, levenshtein_sort=True)
+        menu.case_insensitive = True
+        out = menu(self.menu)
+
+        if out.value is not None:
+            out.value.execute()
+
+        return out
+
+class Cmd(object):
+    """
+    @brief      Creates an item that executes a command.
+
+    @param env 	Env in particular is a bit special; it can either be a list or a dict. A dict is interpreted
+    			as a straight mapping of environment variables, and is passed straight to subprocess.run. If
+    			a list is supplied, however, it is interpreted as a list of envinronment variables *to copy
+    			from the current environment*, and then passed to subprocess.run.
+    """
+    def __init__(self, cmd, show_stdout = False, show_stderr = False, cwd = None, inputs = [], 
+    		env = None, stdin = subprocess.DEVNULL, shell = None):
+        self.cmd = expand(cmd)
+        self.cwd = expand(cwd)
+        self.show_stdout = show_stdout
+        self.show_stderr = show_stderr
+        self.inputs = inputs
+        self.env = env
+        self.stdin = stdin
+        self.shell = shell
+
+    def execute(self):
+        # ask the user for inputs, and store results in inputResults
+        inputResults = {}
+
+        newEnv = None
+        if self.env is None:
+            pass
+        
+        elif type(self.env) is list:
+        	newEnv = {}
+        	for k in self.env:
+        		newEnv[k] = os.environ[k]
+
+        elif type(self.env) is dict:
+        	newEnv = self.env
+
+        else:
+        	raise ValueError('env should be a dict or list')
+
+        for i in self.inputs:
+            val = Msg(prompt=i).execute()
+            inputResults[i] = val.selected
+
+        print('env is', newEnv, 'stdin is', self.stdin, file=sys.stderr)
+        print('cmd is', shlex.split(self.cmd.format(**inputResults)))
+
+        output = subprocess.run(
+            shlex.split(self.cmd.format(**inputResults)), 
+            capture_output=True, 
+            text=True, 
+            check = False, 
+            cwd = self.cwd,
+            env = newEnv,
+            # stdin = self.stdin,
+            shell = self.shell,
+        )
+
+        if output.returncode != 0:
+            Msg(output.stderr).execute()
+
+        if self.show_stdout:
+            Msg(output.stdout).execute()
+        if self.show_stderr:
+            Msg(output.stderr).execute()
+
+        return output
+
+class Msg(object):
+    def __init__(self, msg = '', prompt = ''):
+        self.msg = msg
+        self.prompt = prompt
+
+    def execute(self):
+        menu = Rofi(e = True, prompt = self.prompt, no_tokenize = False, sep='', lines=min(40, len(self.msg.split('\n'))))
+        return menu(self.msg)
+
+class SaveWorkspaceState(object):
+    def execute(self):
+        i3launchconfig.save_workspace_state_to_config(connection)
+
+class LoadWorkspace(object):
+    def __init__(self, workspace_name):
+        self.workspace_name = workspace_name
+
+    def execute(self):
+        i3launchconfig.launch_workspace(connection, save_tree, self.workspace_name, launch_type = 'executeOnStart')
+
+
+Submenu({
+    'load': Submenu({
+        x: LoadWorkspace(x) for x in save_tree.keys()
+    }),
+    'save current workspace': SaveWorkspaceState(),
+    'edit config by hand': Cmd('kitty vim ' + i3launchconfig.save_file),
+}).execute()
