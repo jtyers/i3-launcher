@@ -25,7 +25,7 @@ A menu will pop up, allowing you to load or save your workspace. Configuration i
 
 `i3-launcher` makes me way more productive. However, using applications that support multiple sessions/profiles, so that they can be opened on a per-project basis make this even more powerful. Here is what I use:
 
-* (`kitty`)[https://sw.kovidgoyal.net/kitty/] terminal (most terminals support profiles though)
-* (`qutebrowser`)[https://qutebrowser.org/] for keyboard-driven browser, with vi-like key bindings (uses WebEngine under the hood, same engine as Chrome/Chromium, and supports developer tools and most sites with no problems)
-* (`qutebrowser wrapper script` by ayekat)[https://github.com/ayekat/dotfiles/blob/a236c0fa1cf5e4c4c3e9325295ba5fe8c0d9eb44/lib/dotfiles/bin/qutebrowser] which adds multiple-profile support to qutebrowser
-* (`SpaceVim`)[https://spacevim.org/] as an IDE that can be spawned many times without maxing out your memory or I/O
+* [`kitty`](https://sw.kovidgoyal.net/kitty/) terminal (most terminals support profiles though)
+* [`qutebrowser`](https://qutebrowser.org/) for keyboard-driven browser, with vi-like key bindings (uses WebEngine under the hood, same engine as Chrome/Chromium, and supports developer tools and most sites with no problems)
+* [`qutebrowser wrapper script` by ayekat](https://github.com/ayekat/dotfiles/blob/a236c0fa1cf5e4c4c3e9325295ba5fe8c0d9eb44/lib/dotfiles/bin/qutebrowser) which adds multiple-profile support to qutebrowser
+* [`SpaceVim`](https://spacevim.org/) as a lightweight, Vim-driven IDE
