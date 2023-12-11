@@ -1,8 +1,31 @@
+from __future__ import annotations
+
 from attrs import define
+from cattrs import Converter
+from typing import Optional
 import os
 import yaml
 
 save_file = os.path.expanduser("~/.config/i3/i3-launcher.yaml")
+converter = Converter(forbid_extra_keys=True, omit_if_default=True)
+
+
+@define
+class Config:
+    workspaces: list[Workspace] = []
+
+    def get_workspace(self, name: str) -> Optional[Workspace]:
+        for w in self.workspaces:
+            if w.name == name:
+                return w
+
+        return None
+
+
+@define
+class Workspace:
+    name: str
+    on_start_exec: Optional[list[str]] = None
 
 
 # FIXME not used yet
@@ -20,23 +43,21 @@ def expand(path):
         return os.path.expanduser(os.path.expandvars(path))
 
 
-def load_config():
+def load_config() -> Config:
     """
-    Loads the i3-launcher config from the config file, if it exists.
+    Loads the i3-launcher config from the config file, or a blank one if it doesn't exist.
     """
     try:
         with open(save_file, "r") as f:
-            return yaml.safe_load(f)
+            return converter.structure(yaml.safe_load(f), Config)
 
     except FileNotFoundError:
-        return {}  # ignore and use empty dict
+        return Config()
 
 
-def save_config(save_tree):
+def save_config(config: Config) -> None:
     """
-    Saves the i3-launcher config from the config file, if it exists.
-
-    If the file is missing, an empty dict is returned.
+    Saves the i3-launcher config to the config file.
     """
     with open(save_file, "w") as f:
-        yaml.dump(save_tree, f)
+        yaml.dump(converter.unstructure(config), f)

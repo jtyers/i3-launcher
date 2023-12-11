@@ -4,26 +4,32 @@
 
 import click
 import i3ipc
+import inject
 
 from i3launcher.config import load_config
-from i3launcher.i3 import launch_workspace
-from i3launcher.i3 import save_workspace_state_to_config
-
-connection = i3ipc.Connection()
+from i3launcher.injector import configure_injector
+from i3launcher.i3 import I3Launcher
 
 
 @click.group()
 def main():
-    ...
+    config = load_config()
+    connection = i3ipc.Connection()
+
+    configure_injector(config, connection)
 
 
-@main.command("load")
+@main.command("launch-all")
+def launch_all():
+    l = I3Launcher()
+    l.launch_all_workspaces()
+
+
+@main.command("launch")
 @click.argument("workspace_name")
-def load(workspace_name):
-    save_tree = load_config()
-    launch_workspace(
-        connection, save_tree, workspace_name, launch_type="executeOnStart"
-    )
+def launch(workspace_name):
+    l = I3Launcher()
+    l.launch_workspace(workspace_name)
 
 
 @click.option(
@@ -34,7 +40,8 @@ def load(workspace_name):
 )
 @main.command("save")
 def save(target: str):
-    save_workspace_state_to_config(connection, all_workspaces=(target == "all"))
+    l = I3Launcher()
+    l.save_workspace(all_workspaces=(target == "all"))
 
 
 if __name__ == "__main__":
