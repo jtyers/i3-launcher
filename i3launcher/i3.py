@@ -15,7 +15,7 @@ class I3Launcher:
     def launch_all_workspaces(
         self,
     ):
-        for w in config.workspaces:
+        for w in self.config.workspaces:
             self.launch_workspace(w.name)
 
     def launch_workspace(self, workspace_name: str):
