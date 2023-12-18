@@ -30,7 +30,9 @@ class I3Launcher:
         if not workspace:
             raise ValueError(f'no such workspace "{workspace_name}"')
 
-        self.connection.command(f'workspace "{workspace_name}"')
+        current_workspace = self.connection.get_tree().find_focused().workspace()
+        if current_workspace.name != workspace_name:
+            self.connection.command(f'workspace "{workspace_name}"')
 
         for cmd in workspace.on_start_exec or []:
             # run in connection context, since evt.old is actually gone
@@ -38,10 +40,6 @@ class I3Launcher:
             self.connection.command("exec " + cmd)
 
         i3_w = self.connection.get_tree().find_focused().workspace()
-        if not i3_w:
-            raise ValueError(
-                f'no such i3 workspace "{workspace_name}" after switch - should not happen'
-            )
         self.connection.command(
             f'rename workspace to "{str(i3_w.num)}" "{workspace_name}"'
         )
