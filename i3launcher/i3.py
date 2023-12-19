@@ -2,7 +2,9 @@ import i3ipc
 import inject
 import re
 import subprocess
+import time
 
+from .config import SplitDirection
 from .config import Config
 from .config import Workspace
 from .config import save_config
@@ -34,10 +36,22 @@ class I3Launcher:
         if current_workspace.name != workspace_name:
             self.connection.command(f'workspace "{workspace_name}"')
 
+        if workspace.split == SplitDirection.VERTICAL:
+            self.connection.command("layout splith")
+        elif workspace.split == SplitDirection.HORIZONTAL:
+            self.connection.command("layout splitv")
+
         for cmd in workspace.on_start_exec or []:
-            # run in connection context, since evt.old is actually gone
+            # if workspace.split == SplitDirection.VERTICAL:
+            #    #self.connection.command("layout splitv")
+            #    self.connection.command("split vertical")
+            # elif workspace.split == SplitDirection.HORIZONTAL:
+            #    #self.connection.command("layout splith")
+            #    self.connection.command("split horizontal")
+
             print("about to execute", cmd)
             self.connection.command("exec " + cmd)
+            time.sleep(0.2)
 
         i3_w = self.connection.get_tree().find_focused().workspace()
         self.connection.command(

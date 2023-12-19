@@ -2,12 +2,18 @@ from __future__ import annotations
 
 from attrs import define
 from cattrs import Converter
+from enum import Enum
 from typing import Optional
 import os
 import yaml
 
 save_file = os.path.expanduser("~/.config/i3/i3-launcher.yaml")
 converter = Converter(forbid_extra_keys=True, omit_if_default=True)
+
+
+class SplitDirection(str, Enum):
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
 
 
 @define
@@ -26,6 +32,7 @@ class Config:
 class Workspace:
     name: str
     on_start_exec: Optional[list[str]] = None
+    split: Optional[SplitDirection] = None
 
 
 # FIXME not used yet
