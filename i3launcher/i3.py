@@ -1,5 +1,6 @@
 import i3ipc
 import inject
+import os
 import re
 import subprocess
 import time
@@ -10,9 +11,42 @@ from .config import Workspace
 from .config import save_config
 
 
+def strip_workspace_num(ws: i3ipc.WorkspaceReply) -> str | None:
+    """Returns the name of the given workspace with any leading numbers stripped.
+    Used to match an existing workspace to a profile name. None is returned if there
+    is no name besides the numbers."""
+    # strip any leading numbers from the workspace name; so
+    # "3:www", "3 www", "3_www" and "3-www" all become "www"
+    workspace_name = re.sub(r"^\d\s*[:\s_\-]\s*", "", ws.name)
+
+    if workspace_name:
+        return workspace_name
+    return None
+
+
 class I3Launcher:
     config = inject.attr(Config)
     connection = inject.attr(i3ipc.Connection)
+
+    def next_workspace_num(self):
+        """Returns the next available workspace number."""
+        occupied = [ w.num for w in self.connection.get_workspaces() ]
+        for i in range(1, 10):
+            if i not in occupied:
+                return i
+
+        raise ValueError("no free workspace numbers (up to 9)")
+
+    def find_workspace_for_profile(self, profile: Workspace) -> i3ipc.WorkspaceReply | None:
+        """Finds any existing i3 workspaces with the same name as the given profile."""
+        for ws in self.connection.get_workspaces():
+            if strip_workspace_num(ws) == profile.name:
+                return ws
+
+        return None
+
+    def get_current_workspace(self):
+        return self.connection.get_tree().find_focused().workspace()
 
     def launch_all_workspaces(
         self,
@@ -24,39 +58,23 @@ class I3Launcher:
         """
         Launch the given workspace, if configured, and execute any on_start_exec commands.
         """
-        # strip any leading numbers from the workspace name; so
-        # "3:www", "3 www", "3_www" and "3-www" all become "www"
-        workspace_name = re.sub(r"^\d\s*[:\s_\-]\s*", "", workspace_name)
+        profile = self.config.get_workspace(workspace_name)
+        ws = self.find_workspace_for_profile(profile)
+        num = self.next_workspace_num()
 
-        workspace = self.config.get_workspace(workspace_name)
-        if not workspace:
-            raise ValueError(f'no such workspace "{workspace_name}"')
+        if not ws or strip_workspace_num(self.get_current_workspace().name) != ws.name:
+            self.connection.command(f'workspace "{num} {workspace_name}"')
 
-        current_workspace = self.connection.get_tree().find_focused().workspace()
-        if current_workspace.name != workspace_name:
-            self.connection.command(f'workspace "{workspace_name}"')
-
-        if workspace.split == SplitDirection.VERTICAL:
+        if profile.split == SplitDirection.VERTICAL:
             self.connection.command("layout splith")
-        elif workspace.split == SplitDirection.HORIZONTAL:
+        elif profile.split == SplitDirection.HORIZONTAL:
             self.connection.command("layout splitv")
 
-        for cmd in workspace.on_start_exec or []:
-            # if workspace.split == SplitDirection.VERTICAL:
-            #    #self.connection.command("layout splitv")
-            #    self.connection.command("split vertical")
-            # elif workspace.split == SplitDirection.HORIZONTAL:
-            #    #self.connection.command("layout splith")
-            #    self.connection.command("split horizontal")
-
-            print("about to execute", cmd)
-            self.connection.command("exec " + cmd)
+        for cmd in profile.on_start_exec or []:
+            _cmd = os.path.expanduser(os.path.expandvars(cmd))
+            print("about to execute", _cmd)
+            self.connection.command("exec " + _cmd)
             time.sleep(0.2)
-
-        i3_w = self.connection.get_tree().find_focused().workspace()
-        self.connection.command(
-            f'rename workspace to "{str(i3_w.num)}" "{workspace_name}"'
-        )
 
     def save_workspace(self, all_workspaces: bool = False):
         """
