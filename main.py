@@ -6,7 +6,7 @@ import click
 import i3ipc
 import inject
 
-from i3launcher.config import load_config
+from i3launcher.config import load_config, Config
 from i3launcher.injector import configure_injector
 from i3launcher.i3 import I3Launcher
 
@@ -30,6 +30,17 @@ def launch_all():
 def launch(workspace_name):
     l = I3Launcher()
     l.launch_workspace(workspace_name)
+
+
+@main.command("list")
+def list_workspaces():
+    config = inject.instance(Config)
+    if not config.workspaces:
+        click.echo("No workspaces configured.")
+        return
+    
+    for workspace in config.workspaces:
+        click.echo(workspace.name)
 
 
 @click.option(

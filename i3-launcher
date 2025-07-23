@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -eu
+dn=$(dirname "$0")
+
+export PDM_PROJECT="$dn"
+
+if [ ${DEBUG:-0} -eq 1 ]; then
+    pdm run \
+      pudb \
+      $dn/main.py \
+      "$@"
+else
+    pdm run \
+      $dn/main.py \
+      "$@"
+fi
